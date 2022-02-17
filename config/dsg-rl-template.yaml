@@ -1,0 +1,85 @@
+# Example goseek configuration
+# Note: anything in <BOLD_BRACKETS> needs to be replaced with an
+# appropriate path.
+
+local_dir: "~/ray_results"
+
+env_config: {
+        FILENAME: <TESSE_EXECUTABLE_PATH>,
+        SCENES: [1, 2, 3, 4],
+        episode_length: 400,
+        video_log_path: "./videos",
+        collision_reward: 0,
+        target_found_reward: 1,
+        success_dist: 2,
+        no_collisions: False,
+        modalities: ["RGB", "SEGMENTATION", "DEPTH"],
+        visible_targets: False,
+        use_esdf_data: True,
+        esdf_data: {'1': <SCENE_1_ESDF_PATH>,
+                    '2': <SCENE_2_ESDF_PATH>,
+                    '3': <SCENE_3_ESDF_PATH>,
+                    '4': <SCENE_4_ESDF_PATH>,
+                    },
+        scene_graph: {"1": <SCENE_1_DSG_PATH>,
+                      "2": <SCENE_2_DSG_PATH>,
+                      "3": <SCENE_3_DSG_PATH>,
+                      "4": <SCENE_4_DSG_PATH>,
+                    },
+    }
+
+model: {
+        custom_model: nature_cnn,
+        custom_model_config: {
+            pose_length: 3,
+            graph_node_features: 10,
+            graph_conv_features: [64, 64, 64],
+            graph_embedding_method: "AgentFrame",  
+            n_frame_nodes: 8,
+            n_nodes: 2920,
+            embedding_size: [512],
+            use_image_data: False,
+            cnn_shape: [5, 120, 160],
+        },
+        max_seq_len: 400,
+        vf_share_layers : false
+    }
+
+# training
+lr : 1.0e-4
+gamma : 0.99
+lambda : .9
+vf_loss_coeff : 0.25
+clip_param : 0.3
+vf_clip_param : 25
+entropy_coeff : 0.01
+
+# batch
+train_batch_size : 1024 # 4096
+sgd_minibatch_size : 128
+num_sgd_iter : 30
+rollout_fragment_length: 400
+
+# env
+env : goseek
+framework : torch
+num_workers : 0
+num_gpus : 1
+num_envs_per_worker : 1
+num_gpus_per_worker: 0.25
+log_level : INFO
+
+ckpt_save_freq_timesteps: 10000
+
+evaluation_interval : 50
+evaluation_num_episodes : 50
+evaluation_num_workers: 1
+evaluation_config: {
+    env_config: {
+            SCENES: [5],
+            RANK: 3,
+            FILENAME: <TESSE_EXECUTABLE_PATH>,
+            esdf_data: {'5': <SCENE_5_ESDF_PATH>,
+            scene_graph: {"5": <SCENE_5_DSG_PATH>,
+        }
+    }
