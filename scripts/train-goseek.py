@@ -28,11 +28,13 @@ from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 
+from rllib_policies.gnn import ActionLayerGNNActorCritic
 from tesse.msgs import Camera
 from tesse_gym import ObservationConfig, get_network_config
 from tesse_gym.core.utils import set_all_camera_params
 from tesse_gym.observers.dsg.scene_graph import get_scene_graph_task
-from tesse_gym.rllib.networks import NatureCNNActorCritic, NatureCNNRNNActorCritic
+
+# from tesse_gym.rllib.networks import NatureCNNActorCritic, NatureCNNRNNActorCritic
 from tesse_gym.rllib.utils import (
     check_for_tesse_instances,
     get_args,
@@ -80,7 +82,7 @@ def make_goseek_env(config):
     if "DEPTH" in config["modalities"]:
         modalities.append(Camera.DEPTH)
         cnn_channels += 1
-    assert cnn_channels == cnn_shape[0]
+    # assert cnn_channels == cnn_shape[0]
 
     observation_config = ObservationConfig(
         modalities=modalities,
@@ -108,15 +110,15 @@ def make_goseek_env(config):
         f"MAKING GOSEEK ENV w/ rank: {rank}, inds: ({worker_index}, {vector_index}, scene: {scene})"
     )
 
-    if "esdf_data" not in config.keys():
-        config["esdf_data"] = None
-    if "coordinate_system" not in config.keys():
-        config["coordinate_system"] = "cartesian"
-    if (
-        "agent_frame_type" in config.keys()
-        and "agent_frame_edge_filter_ref" not in config.keys()
-    ):
-        config["agent_frame_edge_filter_ref"] = "layer_node"
+    # if "esdf_data" not in config.keys():
+    #     config["esdf_data"] = None
+    # if "coordinate_system" not in config.keys():
+    #     config["coordinate_system"] = "cartesian"
+    # if (
+    #     "agent_frame_type" in config.keys()
+    #     and "agent_frame_edge_filter_ref" not in config.keys()
+    # ):
+    # config["agent_frame_edge_filter_ref"] = "layer_node"
 
     config.pop("SCENES")
     config.pop("modalities")
@@ -147,41 +149,22 @@ if __name__ == "__main__":
 
     ray.init()
 
+    cnn_shape = (5, 120, 160)
+    ModelCatalog.register_custom_model("gnn_actor_critic", ActionLayerGNNActorCritic)
+    register_env("goseek", make_goseek_env)
+
     config = ppo.DEFAULT_CONFIG.copy()
     config["callbacks"] = GOSEEKGoalCallbacks
     config = populate_rllib_config(config, args.config)
     config["env_config"]["video_log_path"] = (
         config["env_config"]["video_log_path"] + f"/{args.name}"
     )
-    config["env_config"]["query_image_data"] = config["model"]["custom_model_config"][
-        "use_image_data"
-    ]
-
-    cnn_shape = config["model"]["custom_model_config"]["cnn_shape"]
     local_dir = config.pop("local_dir")
-
-    ModelCatalog.register_custom_model("nature_cnn_rnn", NatureCNNRNNActorCritic)
-    ModelCatalog.register_custom_model("nature_cnn", NatureCNNActorCritic)
-    register_env("goseek", make_goseek_env)
-    if "agent_frame_type" in config["env_config"].keys():
-        frame_type = config["env_config"]["agent_frame_type"]
-        params = config["env_config"]["agent_frame_params"]
-
-        if frame_type == "node_frame":
-            angles, dists, _ = params
-            new_nodes = angles * len(dists)
-        elif frame_type == "sector_frame":
-            new_nodes = sum([angles for dists, angles in params])
-        if config["env_config"].get("agent_frame_layer_room_node", False):
-            new_nodes += 1
-        assert config["model"]["custom_model_config"]["n_frame_nodes"] == new_nodes
-
     save_freq_timesteps = config.pop("ckpt_save_freq_timesteps")
     save_freq_itrs = timesteps_to_train_itrs(
         config["train_batch_size"], save_freq_timesteps
     )
     config["evaluation_interval"] = save_freq_itrs
-    print(f"SAVING MODEL EVERY: {save_freq_itrs}")
 
     search_exp = tune.Experiment(
         name=args.name,
