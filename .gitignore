@@ -2,3 +2,5 @@ videos
 *pkl
 *npy
 .vscode
+__pycache__
+*egg-info
