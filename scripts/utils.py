@@ -20,13 +20,14 @@
 ###################################################################################################
 
 
-import argparse
+import pickle
 import subprocess
-from argparse import Namespace
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 import numpy as np
 import yaml
+from ray.rllib.agents import ppo
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.tune import grid_search
 from tesse.msgs import Camera
@@ -53,7 +54,7 @@ def populate_rllib_config(
             precedence.
     """
     with open(user_config) as f:
-        user_config = yaml.load(f)
+        user_config = yaml.load(f, Loader=yaml.FullLoader)
 
     for key, value in user_config.items():
         if isinstance(value, str) and "grid_search" in value:
@@ -151,12 +152,63 @@ def timesteps_to_train_itrs(batch_size, save_freq_timesteps):
     return save_freq_timesteps // batch_size
 
 
-def get_args() -> Namespace:
-    """Get arguments for DSG-RL training."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config")
-    parser.add_argument("--name")
-    parser.add_argument("--timesteps", default=5000000, type=int)
-    parser.add_argument("--sim_ok", action="store_true")
-    parser.add_argument("--restore", default=None)
-    return parser.parse_args()
+def get_ppo_train_config(user_config, experiment_name):
+    config = ppo.DEFAULT_CONFIG.copy()
+    config["callbacks"] = GOSEEKGoalCallbacks
+    config = populate_rllib_config(config, user_config)
+    config["env_config"]["video_log_path"] = (
+        config["env_config"]["video_log_path"] + f"/{experiment_name}"
+    )
+    local_dir = config.pop("local_dir")
+    save_freq_timesteps = config.pop("ckpt_save_freq_timesteps")
+    save_freq = timesteps_to_train_itrs(config["train_batch_size"], save_freq_timesteps)
+    config["evaluation_interval"] = save_freq
+
+    return config, local_dir
+
+
+def get_ppo_eval_config(
+    user_config: str, ckpt: str, log_path: str, episodes: Optional[int] = None,
+):
+    config = ppo.DEFAULT_CONFIG.copy()
+    config["callbacks"] = GOSEEKGoalCallbacks
+    config = populate_rllib_config(config, user_config)
+    config_path = Path(user_config)
+
+    # set train workers to 0
+    config["num_workers"] = 0
+    config["num_envs_per_worker"] = 1
+
+    # override number of evaluation episode
+    if episodes is not None:
+        config["evaluation_num_episodes"] = int(episodes)
+
+    config.pop("ckpt_save_freq_timesteps")  # not used for eval
+
+    # configure video logging
+    config_path = Path(user_config)
+    n_episodes = config["evaluation_num_episodes"]
+    results_path = Path(log_path)
+    results_path.mkdir(exist_ok=True, parents=True)
+    config["env_config"]["video_log_path"] = (
+        results_path / f"{config_path.stem}_{ckpt.name}_{n_episodes}_episode_videos"
+    )
+
+    return config
+
+
+def log_eval_results(
+    results: Dict[str, Any],
+    config: Dict[str, Any],
+    config_path: Path,
+    ckpt: Path,
+    log_path: str,
+) -> None:
+    """Log evaluation results to file."""
+    n_episodes = config["evaluation_num_episodes"]
+    results_path = Path(log_path)
+    if not results_path.exists():
+        results_path.mkdir()
+    results_path /= f"{config_path.stem}_{ckpt.name}_{n_episodes}_episodes_results.pkl"
+    with open(results_path, "wb") as f:
+        pickle.dump(results, f)
