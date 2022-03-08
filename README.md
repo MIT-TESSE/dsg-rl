@@ -7,6 +7,8 @@ published at the International Conference on Robotics and Automation (ICRA) 2022
 
 # Installation 
 
+We reccomend installing in a virtual environment, such as [Anaconda](https://www.anaconda.com/) or [venv](https://docs.python.org/3/tutorial/venv.html). We use Python 3.7 in our work. 
+
 Clone this repo and install dependencies: 
 ```
 git clone git@github.mit.edu:TESS/dsg-rl.git
@@ -18,6 +20,7 @@ Next, install [Pytorch geometric](https://pytorch-geometric.readthedocs.io/en/la
 Pytorch geometric is sensitive to PyTorch and CUDA versions, so we recommend that you install this dependency by following the author's [instructions](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html). 
 You can check your PyTorch and CUDA versions via the following command
 ```python
+>> python
 >> import torch
 >> torch.__version__
 1.10
