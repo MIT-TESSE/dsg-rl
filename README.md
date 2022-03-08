@@ -7,14 +7,15 @@ published at the International Conference on Robotics and Automation (ICRA) 2022
 
 # Installation 
 
-Clone this repo and install dependencies:
+Clone this repo and install dependencies: 
 ```
 git clone git@github.mit.edu:TESS/dsg-rl.git
 pip install -r dsg-rl/requirements.txt
 ```
 
-[Pytorch geometric](https://pytorch-geometric.readthedocs.io/en/latest/index.html) is an additional dependency. 
-However, the installation is sensitive to PyTorch and CUDA versions, so we recommend that you install this dependency by following the author's [instructions](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html). 
+Next, install [Pytorch geometric](https://pytorch-geometric.readthedocs.io/en/latest/index.html).
+
+Pytorch geometric is sensitive to PyTorch and CUDA versions, so we recommend that you install this dependency by following the author's [instructions](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html). 
 You can check your PyTorch and CUDA versions via the following command
 ```python
 >> import torch
