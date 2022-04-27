@@ -23,17 +23,11 @@ import argparse
 from argparse import Namespace
 
 import ray
+from dsg_rl import check_for_tesse_instances, get_ppo_train_config, make_goseek_env
 from ray import tune
-from ray.rllib.agents import ppo
 from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 from rllib_policies.gnn import ActionLayerGNNActorCritic
-
-from utils import (
-    check_for_tesse_instances,
-    get_ppo_train_config,
-    make_goseek_env,
-)
 
 
 def get_args() -> Namespace:

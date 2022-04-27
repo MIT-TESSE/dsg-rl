@@ -5,3 +5,4 @@ videos
 __pycache__
 *egg-info
 *yaml
+*.ipynb

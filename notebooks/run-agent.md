@@ -4,18 +4,16 @@ jupyter:
     text_representation:
       extension: .md
       format_name: markdown
-      format_version: '1.2'
-      jupytext_version: 1.3.4
+      format_version: '1.3'
+      jupytext_version: 1.13.7
   kernelspec:
-    display_name: Python [conda env:test-tesse-gym-install]
+    display_name: Python [conda env:test-tg]
     language: python
-    name: conda-env-test-tesse-gym-install-py
+    name: conda-env-test-tg-py
 ---
 
 ## Notebook to run DSG-RL agent and plot example episodes
 
-__Notes__
-* Make sure there are not instances of the simulator running (you can check this with something like `ps aux | grep "goseek.*x86_64"`)
 
 ```python
 import yaml
@@ -32,8 +30,8 @@ from tesse_gym.observers.dsg.scene_graph import get_scene_graph_task
 from tesse_gym.core.utils import set_all_camera_params
 from tesse_gym.tasks.goseek import GoSeek
 from tesse_gym import ObservationConfig, get_network_config
-from tesse_gym.rllib.networks import NatureCNNRNNActorCritic, NatureCNNActorCritic
-from tesse_gym.eval.rllib import get_ppo_eval_config, make_goseek_env
+from rllib_policies.gnn import ActionLayerGNNActorCritic
+from dsg_rl import get_ppo_eval_config, make_goseek_env
 
 from tesse.msgs import Camera
 
@@ -41,10 +39,6 @@ from ray.rllib.agents import ppo
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from ray.rllib.agents import ppo
-```
-
-```python
-from gym import spaces
 ```
 
 ## Set paths for:
@@ -55,7 +49,7 @@ from gym import spaces
 
 ```python
 ckpt_path = "CKPT_PATH"
-config_path = "../config/dsg-rl.yaml"
+config_path = "CONFIG_PATH"
 ```
 
 ## Restart Ray
@@ -68,7 +62,7 @@ ray.init()
 ## Start PPO agent
 
 ```python
-!ps aux | grep goseek
+!ps aux | grep goseek  # check for any running sim instances 
 ```
 
 ```python
@@ -78,12 +72,11 @@ if "trainer" in globals():
 ```
 
 ```python
-ModelCatalog.register_custom_model("nature_cnn_rnn", NatureCNNRNNActorCritic)
-ModelCatalog.register_custom_model("nature_cnn", NatureCNNActorCritic)
+ModelCatalog.register_custom_model("gnn_actor_critic", ActionLayerGNNActorCritic)
 
 register_env("goseek", make_goseek_env)
 
-ppo_config = get_ppo_eval_config(Path(config_path), ckpt=Path(ckpt_path))
+ppo_config = get_ppo_eval_config(Path(config_path), ckpt=Path(ckpt_path), log_path="./eval_logs")
 
 trainer = ppo.PPOTrainer(ppo_config)
 trainer.load_checkpoint(ckpt_path)
@@ -100,6 +93,8 @@ if "env" in globals():
 # setup configuration
 with open(config_path) as f:
     config = yaml.load(f)
+    
+config["env_config"]["query_image_data"] = True  # for visualization
 
 rank = 0
 scene = 1
@@ -133,10 +128,6 @@ env = get_scene_graph_task(
 
 ## Reset episode
 also plot image from observation
-
-```python
-import tree
-```
 
 ```python
 obs = env.reset(1)

@@ -23,7 +23,7 @@
 import pickle
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import yaml
@@ -38,16 +38,18 @@ from tesse_gym.tasks.goseek import GoSeek
 
 
 def populate_rllib_config(
-    default_config: Dict[str, Any], user_config: Dict[str, str]
+    default_config: Dict[str, Any], user_config: str
 ) -> Dict[str, Any]:
     """Add or edit items from an rllib config.
     If `user_config` contains a value wrapped in the string
     `grid_search([])`, the value will be given as and
     rllib.tune `grid_search` option.
+
     Args:
         default_config (Dict[str, Any]): A default rllib config
             (e.g., for ppo).
-        user_config (Dict[str, str]): Configuration given by user.
+        user_config (str): Path to configuration file.
+
     Returns:
         Dict[str, Any]: `default_config` with `user_config` items
             added. If there are matching keys, `user_config` takes
@@ -85,7 +87,7 @@ class GOSEEKGoalCallbacks(DefaultCallbacks):
         mean_found_targets = _get_unwrapped_env_value(lambda x: x.n_found_targets)
         mean_collisions = _get_unwrapped_env_value(lambda x: x.n_collisions)
         n_visited_nodes = _get_unwrapped_env_value(
-            lambda x: x.observers["dsg"].get_visited_nodes()
+            lambda x: x.get_observers()["dsg"].get_visited_nodes()
         )
         episode.custom_metrics["found_targets"] = mean_found_targets
         episode.custom_metrics["collisions"] = mean_collisions
@@ -98,15 +100,24 @@ class GOSEEKGoalCallbacks(DefaultCallbacks):
             episode.custom_metrics["n_visited_cells"] = mean_visited_cells
 
 
-def init_function(env):
-    # TODO config
+def init_function(env: GoSeek) -> None:
+    """Initialization function called by the
+    TesseyGym environment."""
     cnn_shape = (5, 120, 160)
     set_all_camera_params(
         env, height_in_pixels=cnn_shape[1], width_in_pixels=cnn_shape[2]
     )
 
 
-def make_goseek_env(config):
+def make_goseek_env(config: Dict[str, Any]) -> GoSeek:
+    """Generate GOSEEK environment.
+
+    Args:
+        config (Dict[str, Any]): GOSEEK configuration.
+
+    Returns:
+        GoSeek: TesseGym environment configured for the GOSEEK task.
+    """
     cnn_shape = (5, 120, 160)
 
     observation_config = ObservationConfig(
@@ -147,17 +158,38 @@ def make_goseek_env(config):
     return env
 
 
-def timesteps_to_train_itrs(batch_size, save_freq_timesteps):
+def timesteps_to_train_itrs(batch_size: int, save_freq_timesteps: int) -> int:
     """Get save frequency in training iterations"""
     return save_freq_timesteps // batch_size
 
 
-def get_ppo_train_config(user_config, experiment_name):
+def get_video_log_path(log_path: str, experiment_name: str) -> str:
+    """Get video log path."""
+    if log_path == "None":
+        return None
+    else:
+        return f"{log_path}/{experiment_name}"
+
+
+def get_ppo_train_config(
+    user_config: str, experiment_name: str
+) -> Tuple[Dict[str, Any], str]:
+    """Get configuration for Rllib's PPO.
+
+    Args:
+        user_config (str): Path to DSG-RL configuration file.
+        experiment_name (str): Experiment name.
+
+    Returns:
+        Tuple[Dict[str, Any], str]:
+            - Configuration for PPO
+            - log directory
+    """
     config = ppo.DEFAULT_CONFIG.copy()
     config["callbacks"] = GOSEEKGoalCallbacks
     config = populate_rllib_config(config, user_config)
-    config["env_config"]["video_log_path"] = (
-        config["env_config"]["video_log_path"] + f"/{experiment_name}"
+    config["env_config"]["video_log_path"] = get_video_log_path(
+        config["env_config"]["video_log_path"], experiment_name
     )
     local_dir = config.pop("local_dir")
     save_freq_timesteps = config.pop("ckpt_save_freq_timesteps")
@@ -168,8 +200,24 @@ def get_ppo_train_config(user_config, experiment_name):
 
 
 def get_ppo_eval_config(
-    user_config: str, ckpt: str, log_path: str, episodes: Optional[int] = None,
-):
+    user_config: str,
+    ckpt: str,
+    log_path: str,
+    episodes: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Get configuration for evaluating and Rllib
+    PPO model.
+
+    Args:
+        user_config (str): Path to DSG-RL configuration file.
+        ckpt (str): _description_
+        log_path (str): _description_
+        episodes (Optional[int], optional): _description_. Defaults to None.
+
+    Returns:
+        Dict[str, Any]: Configuration for evaluating and Rllib
+            PPO model.
+    """
     config = ppo.DEFAULT_CONFIG.copy()
     config["callbacks"] = GOSEEKGoalCallbacks
     config = populate_rllib_config(config, user_config)
@@ -190,9 +238,11 @@ def get_ppo_eval_config(
     n_episodes = config["evaluation_num_episodes"]
     results_path = Path(log_path)
     results_path.mkdir(exist_ok=True, parents=True)
-    config["env_config"]["video_log_path"] = (
-        results_path / f"{config_path.stem}_{ckpt.name}_{n_episodes}_episode_videos"
+    config["env_config"]["video_log_path"] = get_video_log_path(
+        results_path, f"{config_path.stem}_{ckpt.name}_{n_episodes}_episode_videos"
     )
+
+    config.pop("local_dir")  # isn't used by evaluator
 
     return config
 
@@ -204,7 +254,15 @@ def log_eval_results(
     ckpt: Path,
     log_path: str,
 ) -> None:
-    """Log evaluation results to file."""
+    """Log evaluation results file file.
+
+    Args:
+        results (Dict[str, Any]): Dictionary of metric-value pairs.
+        config (Dict[str, Any]): Configuration used for evaluation.
+        config_path (Path): Path to configuration used for evaluation.
+        ckpt (Path): Model checkpoint used for evaluation.
+        log_path (str): Path to log directory.
+    """
     n_episodes = config["evaluation_num_episodes"]
     results_path = Path(log_path)
     if not results_path.exists():

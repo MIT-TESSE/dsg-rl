@@ -13,7 +13,7 @@ env_config: {
         target_found_reward: 1,
         success_dist: 2,
         no_collisions: False,
-        modalities: ["RGB", "SEGMENTATION", "DEPTH"],
+        modalities: ["RGB_LEFT", "SEGMENTATION", "DEPTH"],
         visible_targets: False,
         use_esdf_data: True,
         esdf_data: {'1': <SCENE_1_ESDF_PATH>,
@@ -29,17 +29,18 @@ env_config: {
     }
 
 model: {
-        custom_model: nature_cnn,
+        custom_model: gnn_actor_critic,
         custom_model_config: {
-            pose_length: 3,
-            graph_node_features: 10,
+            fields: {
+                nodes: GRAPH_NODES,
+                edges: GRAPH_EDGES,
+                node_shapes: GRAPH_NODE_SHAPE,
+                edge_shapes: GRAPH_EDGE_SHAPE,
+            },
+            in_features: 10,
             graph_conv_features: [64, 64, 64],
-            graph_embedding_method: "AgentFrame",  
-            n_frame_nodes: 8,
-            n_nodes: 2920,
+            n_layer_nodes: 8,
             embedding_size: [512],
-            use_image_data: False,
-            cnn_shape: [5, 120, 160],
         },
         max_seq_len: 400,
         vf_share_layers : false
