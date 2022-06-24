@@ -36,12 +36,12 @@ setup(
         "pandas",
         "torch <= 1.10",
         "torchvision <= 0.11.2",
-        "tesse_gym@git+ssh://git@github.com:MIT-TESSE/tesse-gym.git@master#egg=tesse_gym",
-        "rllib_policies@git+ssh://git@github.com:MIT-TESSE/rllib-policies.git@master#egg=rllib_policies",
+        "tesse-gym@git+ssh://git@github.com/MIT-TESSE/tesse-gym.git@0.2.0#egg=tesse-gym",
+        "rllib_policies@git+ssh://git@github.com/MIT-TESSE/rllib-policies.git@0.1.0#egg=rllib_policies",
         "gym<=0.21",
     ],
     dependency_links=[
-        "git+ssh://git@github.com:MIT-TESSE/tesse-gym.git@master#egg=tesse_gym",
-        "git+ssh://git@github.com:MIT-TESSE/rllib-policies.git@master#egg=rllib_policies",
+        "git+ssh://git@github.com/MIT-TESSE/tesse-gym.git@0.2.0#egg=tesse-gym",
+        "git+ssh://git@github.com/MIT-TESSE/rllib-policies.git@0.1.0#egg=rllib_policies",
     ],
 )
