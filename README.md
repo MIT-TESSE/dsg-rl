@@ -39,7 +39,7 @@ pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geo
 
 ## Configure experiment
 
-See the provided [dsg-rl-template.yaml](./config/dsg-rl-template.yaml) for an example configuration file. 
+See the provided [train-template.yaml](./config/train-template.yaml) for an example configuration file. 
 Note that any fields in <BRACKETS> will need to be updated with the correct device-specific path.
 In particualr, paths to the TESSE simulator, Dynamic Scene Graphs (DSGs), and Euclidean Signed Distance Functions (EDSFs) must be provided,
 all of which may be found [here](https://github.mit.edu/TESS/dsg-rl/releases/download/data/dsg-rl-data.zip).
